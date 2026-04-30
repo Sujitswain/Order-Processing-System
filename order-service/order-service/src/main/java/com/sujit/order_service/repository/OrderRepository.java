@@ -1,7 +1,6 @@
 package com.sujit.order_service.repository;
 
 import com.sujit.order_service.entity.OrderEntity;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

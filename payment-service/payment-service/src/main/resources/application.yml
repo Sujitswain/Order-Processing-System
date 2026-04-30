@@ -28,6 +28,11 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:sk_test}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:web_hook_sec}
+  base-url: ${BASE_URL:http://localhost:3000/}
+
 management:
   endpoints:
     web:
