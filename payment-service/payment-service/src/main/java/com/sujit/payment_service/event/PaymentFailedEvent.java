@@ -1,19 +1,20 @@
-package com.sujit.order_service.event;
+package com.sujit.payment_service.event;
 
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
 import java.util.UUID;
 
-@SuperBuilder
+@Builder
 @Data
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderCancelledEvent {
+public class PaymentFailedEvent {
 
     private UUID orderId;
     private String reason;
+    private Instant failedAt;
 
 }

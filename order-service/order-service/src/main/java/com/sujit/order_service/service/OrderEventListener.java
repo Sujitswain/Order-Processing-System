@@ -6,11 +6,12 @@ import java.nio.charset.StandardCharsets;
 
 import com.sujit.order_service.event.OrderCompletedEvent;
 import com.sujit.order_service.event.PaymentFailedEvent;
+import com.sujit.order_service.event.PaymentSuccessEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class OrderEventListener {
@@ -28,6 +29,14 @@ public class OrderEventListener {
         setCorrelationId(record);
 
         OrderCompletedEvent event = objectMapper.readValue(record.value(), OrderCompletedEvent.class);
+        orderService.markOrderCompleted(event.getOrderId());
+    }
+
+    @KafkaListener(topics = "payment-success", groupId = "order-service-group", containerFactory = "kafkaListenerContainerFactory")
+    public void onPaymentSuccess(ConsumerRecord<String, String> record) throws Exception {
+        setCorrelationId(record);
+
+        PaymentSuccessEvent event = objectMapper.readValue(record.value(), PaymentSuccessEvent.class);
         orderService.markOrderCompleted(event.getOrderId());
     }
 

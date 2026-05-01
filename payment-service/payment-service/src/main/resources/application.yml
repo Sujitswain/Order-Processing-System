@@ -3,10 +3,15 @@ spring:
     name: payment-service
 
   datasource:
-    url: jdbc:h2:mem:paymentsdb;
+    url: jdbc:h2:mem:paymentsdb
     driver-class-name: org.h2.Driver
     username: sa
     password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
   jpa:
     hibernate:
@@ -29,9 +34,9 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 stripe:
-  secret-key: ${STRIPE_SECRET_KEY:sk_test}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET:web_hook_sec}
-  base-url: ${BASE_URL:http://localhost:3000/}
+  secret-key: ${STRIPE_SECRET_KEY:sk_test_1234567890abcdef}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_1234567890abcdef}
+  base-url: ${BASE_URL:http://localhost:8080/}
 
 management:
   endpoints:

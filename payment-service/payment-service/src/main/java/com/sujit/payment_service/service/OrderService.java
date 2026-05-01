@@ -1,21 +1,29 @@
 package com.sujit.payment_service.service;
 
-import com.sujit.payment_service.dto.checkout.CheckoutItemDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.Stripe;
-import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
+import com.sujit.payment_service.dto.CheckoutItemDto;
+import com.sujit.payment_service.entity.PaymentEntity;
+import com.sujit.payment_service.enums.PaymentStatus;
+import com.sujit.payment_service.exception.PaymentInternalServerException;
+import com.sujit.payment_service.repository.PaymentRepository;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-/**
- * Service class for handling Stripe checkout session creation.
- * This service creates hosted checkout sessions for e-commerce payments.
- */
+@Slf4j
 @Service
 @Transactional
 public class OrderService {
@@ -26,32 +34,78 @@ public class OrderService {
     @Value("${stripe.secret-key}")
     private String apiKey;
 
+    public final PaymentRepository paymentRepository;
+    private final ObjectMapper objectMapper;
+
+    public OrderService(PaymentRepository paymentRepository,
+                        ObjectMapper objectMapper) {
+        this.paymentRepository = paymentRepository;
+        this.objectMapper = objectMapper;
+    }
+
     // Create Stripe checkout session for the given cart items.
-    public Session createSession(List<CheckoutItemDto> checkoutItemDtoList) throws StripeException {
-        // Define URLs for post-payment redirects
-        String successURL = baseURL + "payment/success";
-        String failedURL = baseURL + "payment/failed";
+    public Session createSession(UUID orderId,
+                                 List<CheckoutItemDto> checkoutItemDtoList) {
+        try {
+            log.info("Creating checkout session for orderId: {}", orderId);
 
-        // Set Stripe API key for this session (configured globally in StripeConfig)
-        Stripe.apiKey = apiKey;
+            String successURL = baseURL + "payment/success";
+            String failedURL = baseURL + "payment/failed";
 
-        // Convert cart items to Stripe line items
-        List<SessionCreateParams.LineItem> sessionItemsList = new ArrayList<>();
-        for (CheckoutItemDto checkoutItemDto : checkoutItemDtoList) {
-            sessionItemsList.add(createSessionLineItem(checkoutItemDto));
+            Stripe.apiKey = apiKey;
+
+            List<SessionCreateParams.LineItem> sessionItemsList = new ArrayList<>();
+            long totalAmount = 0;
+
+            for (CheckoutItemDto item : checkoutItemDtoList) {
+                log.info("Processing item: {}", item);
+
+                sessionItemsList.add(createSessionLineItem(item));
+                totalAmount += (long) (item.getPrice() * item.getQuantity());
+            }
+
+            totalAmount = totalAmount * 100;
+            log.info("Total amount (cents): {}", totalAmount);
+
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                    .setCancelUrl(failedURL)
+                    .setSuccessUrl(successURL)
+                    .addAllLineItem(sessionItemsList)
+                    .setPaymentIntentData(
+                            SessionCreateParams.PaymentIntentData.builder()
+                                    .putMetadata("orderId", String.valueOf(orderId))
+                                    .build()
+                    )
+                    .build();
+
+            log.info("Creating Stripe session...");
+            Session session = Session.create(params);
+
+            log.info("Stripe session created: {}", session.getId());
+
+            // Find existing payment entity (created by processOrderCreated)
+            PaymentEntity payment = paymentRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new PaymentInternalServerException("Payment record not found for order: " + orderId));
+
+            // Update the payment entity
+            payment.setTransactionId(session.getId());
+            payment.setStatus(PaymentStatus.PENDING.name());
+            payment.setResponsePayload(objectMapper.writeValueAsString(Map.of(
+                    "sessionId", session.getId(),
+                    "status", PaymentStatus.PENDING
+            )));
+
+            log.info("Updating payment entity to PENDING: {}", payment);
+            paymentRepository.save(payment);
+
+            return session;
+
+        } catch (Exception e) {
+            log.error("Error creating checkout session for orderId {}: {}", orderId, e.getMessage(), e);
+            throw new PaymentInternalServerException("Failed to create checkout session", e);
         }
-
-        // Build session parameters for a payment checkout
-        SessionCreateParams params = SessionCreateParams.builder()
-                .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-                .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setCancelUrl(failedURL)              // Where to redirect on payment cancellation
-                .addAllLineItem(sessionItemsList)     // Add all cart items
-                .setSuccessUrl(successURL)            // Where to redirect on successful payment
-                .build();
-
-        // Create and return the Stripe checkout session
-        return Session.create(params);
     }
 
     // Set quantity

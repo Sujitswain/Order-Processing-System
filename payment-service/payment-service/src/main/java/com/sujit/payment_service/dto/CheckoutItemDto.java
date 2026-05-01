@@ -1,10 +1,6 @@
 package com.sujit.payment_service.dto;
 
-
 import lombok.*;
-
-import java.math.BigDecimal;
-import java.util.UUID;
 
 @Builder
 @Data
@@ -12,10 +8,10 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderItem {
+public class CheckoutItemDto {
 
-    private UUID productId;
+    private String productName;
     private int quantity;
-    private BigDecimal price;
+    private double price;
 
 }

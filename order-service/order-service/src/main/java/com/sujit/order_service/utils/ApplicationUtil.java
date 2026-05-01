@@ -5,9 +5,7 @@ import com.sujit.order_service.dto.OrderResponse;
 import com.sujit.order_service.entity.OrderEntity;
 import com.sujit.order_service.event.OrderCancelledEvent;
 import com.sujit.order_service.event.OrderCreatedEvent;
-import com.sujit.order_service.event.OrderItemEvent;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 public class ApplicationUtil {
@@ -29,23 +27,12 @@ public class ApplicationUtil {
         return response;
     }
 
-    private static List<OrderItemEvent> mapToEventItems(OrderEntity order) {
-        return order.getItems().stream()
-                .map(item -> OrderItemEvent.builder()
-                        .productId(item.getProductId())
-                        .quantity(item.getQuantity())
-                        .price(item.getPrice())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
     public static OrderCreatedEvent toOrderCreatedEvent(OrderEntity order) {
         return OrderCreatedEvent.builder()
                 .orderId(order.getId())
                 .customerId(order.getCustomerId())
                 .totalAmount(order.getTotalAmount())
                 .createdAt(order.getCreatedAt())
-                .items(mapToEventItems(order))
                 .build();
     }
 
@@ -53,7 +40,6 @@ public class ApplicationUtil {
         return OrderCancelledEvent.builder()
                 .orderId(order.getId())
                 .reason(reason)
-                .items(mapToEventItems(order))
                 .build();
     }
 

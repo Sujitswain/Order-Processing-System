@@ -13,6 +13,7 @@ import com.sujit.order_service.service.OrderProducer;
 import com.sujit.order_service.service.OrderService;
 import com.sujit.order_service.utils.ApplicationUtil;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static com.sujit.order_service.utils.ApplicationUtil.*;
 
+@Slf4j
 @Service
 public class OrderServiceImpl implements OrderService {
 
@@ -40,6 +42,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public OrderResponse createOrder(CreateOrderRequest request) {
+        log.info("Creating order for customer: {}", request.getCustomerId());
 
         // create order entity
         OrderEntity order = new OrderEntity();
@@ -66,6 +69,7 @@ public class OrderServiceImpl implements OrderService {
 
         // create order event and publish to kafka-topic
         OrderCreatedEvent event = toOrderCreatedEvent(saved);
+        log.info("Publishing order created event for order: {}", saved.getId());
         orderProducer.publish("order-created", event);
 
         return mapToOrderResponse(saved);
@@ -73,12 +77,14 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponse getOrder(UUID orderId) {
+        log.info("Retrieving order: {}", orderId);
         OrderEntity order = getOrderByOrderId(orderId);
         return mapToOrderResponse(order);
     }
 
     @Override
     public Page<OrderResponse> getOrdersByCustomer(UUID customerId, int page, int size) {
+        log.info("Retrieving orders for customer: {} page: {} size: {}", customerId, page, size);
         Pageable pageable = PageRequest.of(page, size);
 
         Page<OrderEntity> result = orderRepository.findByCustomerId(customerId, pageable);
@@ -88,6 +94,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public OrderResponse cancelOrder(UUID orderId) {
+        log.info("Cancelling order: {}", orderId);
         OrderEntity order = getOrderByOrderId(orderId);
         if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
             throw new OrderBadRequestException("Order cannot be cancelled");
@@ -97,6 +104,7 @@ public class OrderServiceImpl implements OrderService {
 
         // create an order cancel event and public it to kafka
         OrderCancelledEvent cancelledEvent = toOrderCancelledEvent(order, "Cancelled By Customer");
+        log.info("Publishing order cancelled event for order: {}", orderId);
         orderProducer.publish("order-cancelled", cancelledEvent);
 
         return mapToOrderResponse(order);
@@ -105,6 +113,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public void markOrderCompleted(UUID orderId) {
+        log.info("Marking order as completed: {}", orderId);
         OrderEntity order = getOrderByOrderId(orderId);
         order.setStatus(OrderStatus.COMPLETED);
         orderRepository.save(order);
@@ -113,12 +122,14 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public void markOrderPaymentFailed(UUID orderId) {
+        log.info("Marking order as payment failed: {}", orderId);
         OrderEntity order = getOrderByOrderId(orderId);
         order.setStatus(OrderStatus.PAYMENT_FAILED);
         orderRepository.save(order);
     }
 
     public OrderEntity getOrderByOrderId(UUID orderId) {
+        log.debug("Fetching order entity for: {}", orderId);
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderBadRequestException(HttpStatus.NOT_FOUND, "Order not found"));
     }

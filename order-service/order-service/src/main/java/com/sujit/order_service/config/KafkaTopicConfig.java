@@ -28,6 +28,11 @@ public class KafkaTopicConfig {
     }
 
     @Bean
+    public NewTopic paymentSuccessTopic() {
+        return new NewTopic("payment-success", 1, (short) 1);
+    }
+
+    @Bean
     public NewTopic orderCompletedDltTopic() {
         return new NewTopic("order-completed.DLT", 1, (short) 1);
     }

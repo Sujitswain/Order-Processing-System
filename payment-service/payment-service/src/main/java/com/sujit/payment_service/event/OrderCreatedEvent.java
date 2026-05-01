@@ -1,13 +1,13 @@
-package com.sujit.order_service.event;
+package com.sujit.payment_service.event;
 
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
-@SuperBuilder
+@Builder
 @Data
 @Getter
 @Setter
@@ -21,4 +21,3 @@ public class OrderCreatedEvent {
     private Instant createdAt;
 
 }
-
