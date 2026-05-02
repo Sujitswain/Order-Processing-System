@@ -1,15 +1,10 @@
-package com.sujit.payment_service.exception;
+package com.sujit.inventory_service.exception;
 
-import lombok.*;
+import lombok.Getter;
 
 import java.time.Instant;
 
-@Builder
-@Data
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class ApiErrorResponse<T> {
 
     private Instant timestamp;
@@ -25,5 +20,4 @@ public class ApiErrorResponse<T> {
         response.error = error;
         return response;
     }
-
 }
