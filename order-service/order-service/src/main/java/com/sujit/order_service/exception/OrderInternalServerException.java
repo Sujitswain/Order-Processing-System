@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 public class OrderInternalServerException extends RuntimeException {
 
-    public HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+    private HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 
     public OrderInternalServerException(String message, HttpStatus status) {
         super(message);
@@ -18,7 +18,4 @@ public class OrderInternalServerException extends RuntimeException {
         this.status = status;
     }
 
-    public HttpStatus getStatus() {
-        return status;
-    }
 }

@@ -2,13 +2,24 @@ package com.sujit.order_service.utils;
 
 import com.sujit.order_service.dto.OrderItemResponse;
 import com.sujit.order_service.dto.OrderResponse;
+import com.sujit.order_service.dto.ProductResponse;
 import com.sujit.order_service.entity.OrderEntity;
+import com.sujit.order_service.entity.Product;
 import com.sujit.order_service.event.OrderCancelledEvent;
 import com.sujit.order_service.event.OrderCreatedEvent;
 
-import java.util.stream.Collectors;
-
 public class ApplicationUtil {
+
+    public static ProductResponse mapToResponse(Product product, int quantity) {
+        return ProductResponse.builder()
+                .id(product.getId())
+                .sku(product.getSku())
+                .name(product.getName())
+                .price(product.getPrice())
+                .description(product.getDescription())
+                .quantity(quantity)
+                .build();
+    }
 
     public static OrderResponse mapToOrderResponse(OrderEntity order) {
         OrderResponse response = new OrderResponse();

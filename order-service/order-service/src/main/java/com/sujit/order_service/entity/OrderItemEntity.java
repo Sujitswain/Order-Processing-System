@@ -13,13 +13,14 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Entity
-@Table(name = "order_items")
+@Builder
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
+@Entity
+@Table(name = "order_items")
 public class OrderItemEntity {
 
     @Id
