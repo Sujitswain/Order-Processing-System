@@ -1,18 +1,20 @@
 package com.sujit.inventory_service.service;
 
 import com.sujit.inventory_service.client.OrderServiceClient;
-import com.sujit.inventory_service.dto.InventoryDto;
+import com.sujit.inventory_service.dto.InventoryResponse;
 import com.sujit.inventory_service.dto.OrderItemResponse;
 import com.sujit.inventory_service.dto.OrderResponse;
+import com.sujit.inventory_service.dto.RestockRequest;
 import com.sujit.inventory_service.entity.ProductStock;
 import com.sujit.inventory_service.entity.StockHistory;
-import com.sujit.inventory_service.event.InventoryEvents;
-import com.sujit.inventory_service.event.InventoryEvents.InventoryUpdatedEvent;
-import com.sujit.inventory_service.event.InventoryEvents.OrderCancelledEvent;
-import com.sujit.inventory_service.event.InventoryEvents.PaymentSuccessEvent;
+import com.sujit.inventory_service.event.InventoryUpdatedEvent;
+import com.sujit.inventory_service.event.OrderCancelledEvent;
+import com.sujit.inventory_service.event.OrderCompletedEvent;
+import com.sujit.inventory_service.event.PaymentSuccessEvent;
 import com.sujit.inventory_service.exception.InventoryBadRequestException;
 import com.sujit.inventory_service.repository.ProductStockRepository;
 import com.sujit.inventory_service.repository.StockHistoryRepository;
+import com.sujit.inventory_service.util.ApplicationUtil;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,8 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
+import static com.sujit.inventory_service.util.ApplicationUtil.toResponse;
 
 @Service
 public class InventoryService {
@@ -39,14 +43,14 @@ public class InventoryService {
         this.orderServiceClient = orderServiceClient;
     }
 
-    public InventoryDto.InventoryResponse getInventory(UUID productId) {
+    public InventoryResponse getInventory(UUID productId) {
         ProductStock stock = stockRepository.findById(productId)
                 .orElseThrow(() -> new InventoryBadRequestException(HttpStatus.NOT_FOUND, "Product stock not found"));
         return toResponse(stock);
     }
 
     @Transactional
-    public InventoryDto.InventoryResponse restock(InventoryDto.RestockRequest request) {
+    public InventoryResponse restock(RestockRequest request) {
         ProductStock stock = stockRepository.findById(request.getProductId()).orElseGet(() -> {
             ProductStock newStock = new ProductStock();
             newStock.setProductId(request.getProductId());
@@ -69,8 +73,8 @@ public class InventoryService {
         return toResponse(saved);
     }
 
-    public List<InventoryDto.InventoryResponse> getLowStock(int threshold) {
-        return stockRepository.findByQuantityLessThan(threshold).stream().map(this::toResponse).toList();
+    public List<InventoryResponse> getLowStock(int threshold) {
+        return stockRepository.findByQuantityLessThan(threshold).stream().map(ApplicationUtil::toResponse).toList();
     }
 
     @Transactional
@@ -100,7 +104,7 @@ public class InventoryService {
 
             publishInventoryUpdated(stock, event.getOrderId(), -item.getQuantity());
         }
-        InventoryEvents.OrderCompletedEvent orderCompletedEvent = new InventoryEvents.OrderCompletedEvent();
+        OrderCompletedEvent orderCompletedEvent = new OrderCompletedEvent();
         orderCompletedEvent.setOrderId(event.getOrderId());
         orderCompletedEvent.setCompletedAt(Instant.now());
         inventoryProducer.publish("order-completed", orderCompletedEvent);
@@ -148,11 +152,4 @@ public class InventoryService {
         inventoryProducer.publish("inventory-updated", event);
     }
 
-    private InventoryDto.InventoryResponse toResponse(ProductStock stock) {
-        InventoryDto.InventoryResponse response = new InventoryDto.InventoryResponse();
-        response.setProductId(stock.getProductId());
-        response.setSku(stock.getSku());
-        response.setQuantity(stock.getQuantity());
-        return response;
-    }
 }

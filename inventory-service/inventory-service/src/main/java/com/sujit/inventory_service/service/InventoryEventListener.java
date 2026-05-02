@@ -3,9 +3,10 @@ package com.sujit.inventory_service.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sujit.inventory_service.config.CorrelationIdFilter;
 import com.sujit.inventory_service.config.CorrelationIdHolder;
-import com.sujit.inventory_service.event.InventoryEvents.OrderCancelledEvent;
-import com.sujit.inventory_service.event.InventoryEvents.PaymentSuccessEvent;
 import java.nio.charset.StandardCharsets;
+
+import com.sujit.inventory_service.event.OrderCancelledEvent;
+import com.sujit.inventory_service.event.PaymentSuccessEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.springframework.kafka.annotation.KafkaListener;
