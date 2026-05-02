@@ -1,20 +1,15 @@
 server:
-  port: 8081
+  port: 8083
 
 spring:
   application:
-    name: payment-service
+    name: notification-service
 
   datasource:
-    url: jdbc:h2:mem:paymentsdb
+    url: jdbc:h2:mem:notificationsdb
     driver-class-name: org.h2.Driver
     username: sa
     password:
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
 
   jpa:
     hibernate:
@@ -25,21 +20,24 @@ spring:
     bootstrap-servers: localhost:9092
 
     consumer:
-      group-id: payment-service-group
+      group-id: notification-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       properties:
         spring.json.trusted.packages: '*'
 
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-
-stripe:
-  secret-key: ${STRIPE_SECRET_KEY:sk_test_1234567890abcdef}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_1234567890abcdef}
-  base-url: ${BASE_URL:http://localhost:8080/}
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 management:
   endpoints:
@@ -51,3 +49,9 @@ logging:
   level:
     org.springframework: INFO
     com.sujit: DEBUG
+
+api:
+  order:
+    service:
+      base-url: http://localhost:8081
+      get-orders: /api/v1/orders/{orderId}

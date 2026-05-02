@@ -21,6 +21,9 @@ public class CreateOrderRequest {
     private UUID customerId;
 
     @NotNull
+    private String customerEmail;
+
+    @NotNull
     @Min(1)
     private BigDecimal totalAmount;
 

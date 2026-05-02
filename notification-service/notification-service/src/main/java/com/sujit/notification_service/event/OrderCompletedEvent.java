@@ -8,10 +8,9 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class PaymentFailedEvent {
+public class OrderCompletedEvent {
 
     private UUID orderId;
-    private String reason;
-    private Instant failedAt;
+    private Instant completedAt;
 
 }

@@ -1,26 +1,25 @@
-package com.sujit.order_service.dto;
+package com.sujit.notification_service.dto;
 
-import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-@Builder
-@Data
-@Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class OrderResponse {
 
     private UUID orderId;
     private UUID customerId;
-    private String customerEmail;
     private BigDecimal totalAmount;
     private String status;
     private Instant createdAt;
     private List<OrderItemResponse> items;
+    private String customerEmail;
 
 }

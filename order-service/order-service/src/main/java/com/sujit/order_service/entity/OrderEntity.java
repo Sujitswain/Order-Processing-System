@@ -34,6 +34,9 @@ public class OrderEntity {
     private UUID customerId;
 
     @Column(nullable = false)
+    private String customerEmail;
+
+    @Column(nullable = false)
     private BigDecimal totalAmount;
 
     @Column(nullable = false)

@@ -8,6 +8,7 @@ import com.sujit.order_service.entity.ProductStock;
 import com.sujit.order_service.enums.OrderStatus;
 import com.sujit.order_service.event.OrderCancelledEvent;
 import com.sujit.order_service.event.OrderCreatedEvent;
+import com.sujit.order_service.event.OrderSuccessEvent;
 import com.sujit.order_service.exception.OrderBadRequestException;
 import com.sujit.order_service.repository.OrderRepository;
 import com.sujit.order_service.repository.ProductStockRepository;
@@ -115,7 +116,12 @@ public class OrderServiceImpl implements OrderService {
         log.info("Marking order as completed: {}", orderId);
         OrderEntity order = getOrderByOrderId(orderId);
         order.setStatus(OrderStatus.COMPLETED);
-        orderRepository.save(order);
+        OrderEntity saved = orderRepository.save(order);
+
+        // Send order success event for PDF generation
+        OrderSuccessEvent successEvent = toOrderSuccessEvent(saved);
+        log.info("Publishing order success event for order: {}", saved.getId());
+        orderProducer.publish("order-success", successEvent);
 
         log.info("Marking order as completed: id={}, customerId={}", order.getId(), order.getCustomerId());
     }
@@ -174,6 +180,7 @@ public class OrderServiceImpl implements OrderService {
     private OrderEntity buildOrderEntity(CreateOrderRequest request) {
         OrderEntity order = new OrderEntity();
         order.setCustomerId(request.getCustomerId());
+        order.setCustomerEmail(request.getCustomerEmail());
         order.setTotalAmount(request.getTotalAmount());
         order.setStatus(OrderStatus.CREATED);
         order.setCreatedAt(Instant.now());

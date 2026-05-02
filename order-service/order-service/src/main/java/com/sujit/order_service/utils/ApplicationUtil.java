@@ -7,6 +7,7 @@ import com.sujit.order_service.entity.OrderEntity;
 import com.sujit.order_service.entity.Product;
 import com.sujit.order_service.event.OrderCancelledEvent;
 import com.sujit.order_service.event.OrderCreatedEvent;
+import com.sujit.order_service.event.OrderSuccessEvent;
 
 public class ApplicationUtil {
 
@@ -25,6 +26,7 @@ public class ApplicationUtil {
         OrderResponse response = new OrderResponse();
         response.setOrderId(order.getId());
         response.setCustomerId(order.getCustomerId());
+        response.setCustomerEmail(order.getCustomerEmail());
         response.setTotalAmount(order.getTotalAmount());
         response.setStatus(order.getStatus().name());
         response.setCreatedAt(order.getCreatedAt());
@@ -42,6 +44,16 @@ public class ApplicationUtil {
         return OrderCreatedEvent.builder()
                 .orderId(order.getId())
                 .customerId(order.getCustomerId())
+                .totalAmount(order.getTotalAmount())
+                .createdAt(order.getCreatedAt())
+                .build();
+    }
+
+    public static OrderSuccessEvent toOrderSuccessEvent(OrderEntity order) {
+        return OrderSuccessEvent.builder()
+                .orderId(order.getId())
+                .customerId(order.getCustomerId())
+                .customerEmail(order.getCustomerEmail())
                 .totalAmount(order.getTotalAmount())
                 .createdAt(order.getCreatedAt())
                 .build();
