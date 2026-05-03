@@ -26,9 +26,16 @@ public class ProductStock {
     private int quantity;
 
     @Column(nullable = false)
+    private int reservedQuantity;
+
+    @Column(nullable = false)
     private String sku;
 
     @Version
     @Column(nullable = false)
     private long version;
+
+    public int getAvailableQuantity() {
+        return this.quantity - this.reservedQuantity;
+    }
 }

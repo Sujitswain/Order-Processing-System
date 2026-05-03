@@ -6,6 +6,7 @@ import com.sujit.inventory_service.config.CorrelationIdHolder;
 import java.nio.charset.StandardCharsets;
 
 import com.sujit.inventory_service.event.OrderCancelledEvent;
+import com.sujit.inventory_service.event.OrderCreatedEvent;
 import com.sujit.inventory_service.event.PaymentSuccessEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -21,6 +22,13 @@ public class InventoryEventListener {
     public InventoryEventListener(ObjectMapper objectMapper, InventoryService inventoryService) {
         this.objectMapper = objectMapper;
         this.inventoryService = inventoryService;
+    }
+
+    @KafkaListener(topics = "order-created", groupId = "inventory-service-group", containerFactory = "kafkaListenerContainerFactory")
+    public void onOrderCreated(ConsumerRecord<String, String> record) throws Exception {
+        setCorrelationId(record);
+        OrderCreatedEvent event = objectMapper.readValue(record.value(), OrderCreatedEvent.class);
+        inventoryService.handleOrderCreated(event);
     }
 
     @KafkaListener(topics = "payment-success", groupId = "inventory-service-group", containerFactory = "kafkaListenerContainerFactory")

@@ -10,6 +10,7 @@ import com.sujit.inventory_service.entity.StockHistory;
 import com.sujit.inventory_service.event.InventoryUpdatedEvent;
 import com.sujit.inventory_service.event.OrderCancelledEvent;
 import com.sujit.inventory_service.event.OrderCompletedEvent;
+import com.sujit.inventory_service.event.OrderCreatedEvent;
 import com.sujit.inventory_service.event.PaymentSuccessEvent;
 import com.sujit.inventory_service.exception.InventoryBadRequestException;
 import com.sujit.inventory_service.repository.ProductStockRepository;
@@ -78,36 +79,49 @@ public class InventoryService {
     }
 
     @Transactional
+    public void handleOrderCreated(OrderCreatedEvent event) {
+        logInventoryEvent(event.getOrderId(), "RESERVE", 0);
+    }
+
+    @Transactional
     public void handlePaymentSuccess(PaymentSuccessEvent event) {
-        OrderResponse order = orderServiceClient.getOrder(event.getOrderId());
-        if (order.getItems() == null || order.getItems().isEmpty()) {
-            throw new InventoryBadRequestException(HttpStatus.BAD_REQUEST, "Order item details not found for order: " + event.getOrderId());
-        }
-
-        for (OrderItemResponse item : order.getItems()) {
-            // Idempotency check: ensure this exact stock change was not already processed
-            if (historyRepository.findByOrderIdAndProductIdAndTransactionId(event.getOrderId(), item.getProductId(), event.getTransactionId()).isPresent()) {
-                continue;
-            }
-            ProductStock stock = stockRepository.findById(item.getProductId()).orElseThrow(
-                    () -> new InventoryBadRequestException(HttpStatus.NOT_FOUND, "Stock not available for product: " + item.getProductId()));
-            stock.setQuantity(stock.getQuantity() - item.getQuantity());
-            stockRepository.save(stock);
-
-            StockHistory history = new StockHistory();
-            history.setOrderId(event.getOrderId());
-            history.setProductId(item.getProductId());
-            history.setTransactionId(event.getTransactionId());
-            history.setChangeAmount(-item.getQuantity());
-            history.setCreatedAt(Instant.now());
-            historyRepository.save(history);
-
-            publishInventoryUpdated(stock, event.getOrderId(), -item.getQuantity());
-        }
+        logInventoryEvent(event.getOrderId(), event.getTransactionId(), -1);
         OrderCompletedEvent orderCompletedEvent = new OrderCompletedEvent();
         orderCompletedEvent.setOrderId(event.getOrderId());
         orderCompletedEvent.setCompletedAt(Instant.now());
         inventoryProducer.publish("order-completed", orderCompletedEvent);
+    }
+
+    /**
+     * Common method to log inventory events for order lifecycle.
+     * transactionType: "RESERVE" for reservation, event.transactionId() for payment finalization
+     */
+    private void logInventoryEvent(UUID orderId, String transactionType, int changeAmountMultiplier) {
+        OrderResponse order = orderServiceClient.getOrder(orderId);
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            throw new InventoryBadRequestException(HttpStatus.BAD_REQUEST, "Order item details not found for order: " + orderId);
+        }
+
+        for (OrderItemResponse item : order.getItems()) {
+            // Idempotency check: don't process same transaction twice
+            if (historyRepository.findByOrderIdAndProductIdAndTransactionId(orderId, item.getProductId(), transactionType).isPresent()) {
+                continue;
+            }
+
+            ProductStock stock = stockRepository.findById(item.getProductId()).orElseThrow(
+                    () -> new InventoryBadRequestException(HttpStatus.NOT_FOUND, "Stock not available for product: " + item.getProductId()));
+
+            StockHistory history = new StockHistory();
+            history.setOrderId(orderId);
+            history.setProductId(item.getProductId());
+            history.setTransactionId(transactionType);
+            history.setChangeAmount(item.getQuantity() * changeAmountMultiplier);
+            history.setCreatedAt(Instant.now());
+            historyRepository.save(history);
+
+            int changeAmount = changeAmountMultiplier == 0 ? 0 : item.getQuantity() * changeAmountMultiplier;
+            publishInventoryUpdated(stock, orderId, changeAmount);
+        }
     }
 
     @Transactional
@@ -128,17 +142,15 @@ public class InventoryService {
                 fallback.setQuantity(0);
                 return fallback;
             });
-            stock.setQuantity(stock.getQuantity() + item.getQuantity());
-            stockRepository.save(stock);
-
+            // Release is handled by order-service, just log history
             StockHistory history = new StockHistory();
             history.setOrderId(event.getOrderId());
             history.setProductId(item.getProductId());
-            history.setChangeAmount(item.getQuantity());
+            history.setChangeAmount(item.getQuantity()); // Released
             history.setCreatedAt(Instant.now());
             historyRepository.save(history);
 
-            publishInventoryUpdated(stock, event.getOrderId(), item.getQuantity());
+            publishInventoryUpdated(stock, event.getOrderId(), item.getQuantity()); // Notify with change
         }
     }
 

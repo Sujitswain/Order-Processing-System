@@ -30,7 +30,14 @@ public class ProductStock {
     @Column(nullable = false)
     private int quantity;
 
+    @Column(nullable = false)
+    private int reservedQuantity;
+
     @Version
     @Column(nullable = false)
     private long version;
+
+    public int getAvailableQuantity() {
+        return this.quantity - this.reservedQuantity;
+    }
 }

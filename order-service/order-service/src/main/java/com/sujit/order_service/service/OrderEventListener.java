@@ -4,7 +4,6 @@ import com.sujit.order_service.config.CorrelationIdHolder;
 import com.sujit.order_service.config.CorrelationIdFilter;
 import java.nio.charset.StandardCharsets;
 
-import com.sujit.order_service.event.OrderCompletedEvent;
 import com.sujit.order_service.event.PaymentFailedEvent;
 import com.sujit.order_service.event.PaymentSuccessEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -22,14 +21,6 @@ public class OrderEventListener {
     public OrderEventListener(ObjectMapper objectMapper, OrderService orderService) {
         this.objectMapper = objectMapper;
         this.orderService = orderService;
-    }
-
-    @KafkaListener(topics = "order-completed", groupId = "order-service-group", containerFactory = "kafkaListenerContainerFactory")
-    public void onOrderCompleted(ConsumerRecord<String, String> record) throws Exception {
-        setCorrelationId(record);
-
-        OrderCompletedEvent event = objectMapper.readValue(record.value(), OrderCompletedEvent.class);
-        orderService.markOrderCompleted(event.getOrderId());
     }
 
     @KafkaListener(topics = "payment-success", groupId = "order-service-group", containerFactory = "kafkaListenerContainerFactory")

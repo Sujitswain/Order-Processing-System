@@ -51,9 +51,9 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse createOrder(CreateOrderRequest request) {
         log.info("Creating order for customer: {}", request.getCustomerId());
 
-        // validate inventory for each item in the order
+        // reserve inventory for each item in the order
         request.getItems().forEach(itemRequest -> {
-            validateInventory(itemRequest.getProductId(), itemRequest.getQuantity());
+            reserveStock(itemRequest.getProductId(), itemRequest.getQuantity());
         });
 
         // create order entity
@@ -101,6 +101,8 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.CANCELLED);
         orderRepository.save(order);
 
+        releaseStockReservation(orderId);
+
         // create an order cancel event and public it to kafka
         OrderCancelledEvent cancelledEvent = toOrderCancelledEvent(order, "Cancelled By Customer");
         log.info("Publishing order cancelled event for order: {}", orderId);
@@ -115,8 +117,14 @@ public class OrderServiceImpl implements OrderService {
     public void markOrderCompleted(UUID orderId) {
         log.info("Marking order as completed: {}", orderId);
         OrderEntity order = getOrderByOrderId(orderId);
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            return;
+        }
+
         order.setStatus(OrderStatus.COMPLETED);
         OrderEntity saved = orderRepository.save(order);
+
+        finalizeStockDeduction(orderId);
 
         // Send order success event for PDF generation
         OrderSuccessEvent successEvent = toOrderSuccessEvent(saved);
@@ -131,10 +139,45 @@ public class OrderServiceImpl implements OrderService {
     public void markOrderPaymentFailed(UUID orderId) {
         log.info("Marking order as payment failed: {}", orderId);
         OrderEntity order = getOrderByOrderId(orderId);
+        if (order.getStatus() == OrderStatus.PAYMENT_FAILED) {
+            return;
+        }
+
         order.setStatus(OrderStatus.PAYMENT_FAILED);
         orderRepository.save(order);
 
+        releaseStockReservation(orderId);
+
+        OrderCancelledEvent cancelledEvent = toOrderCancelledEvent(order, "Payment failed");
+        log.info("Publishing order cancelled event for payment failure: {}", orderId);
+        orderProducer.publish("order-cancelled", cancelledEvent);
+
         log.info("Marking order as payment failed: id={}, customerId={}", order.getId(), order.getCustomerId());
+    }
+
+    @Transactional
+    public void finalizeStockDeduction(UUID orderId) {
+        OrderEntity order = getOrderByOrderId(orderId);
+        order.getItems().forEach(item -> {
+            ProductStock stock = productStockRepository.findByProductId(item.getProductId())
+                    .orElseThrow(() -> new OrderBadRequestException("Product not found"));
+            // Decrease TOTAL stock and remove the reservation
+            stock.setQuantity(stock.getQuantity() - item.getQuantity());
+            stock.setReservedQuantity(stock.getReservedQuantity() - item.getQuantity());
+            productStockRepository.save(stock);
+        });
+    }
+
+    @Transactional
+    public void releaseStockReservation(UUID orderId) {
+        OrderEntity order = getOrderByOrderId(orderId);
+        order.getItems().forEach(item -> {
+            ProductStock stock = productStockRepository.findByProductId(item.getProductId())
+                    .orElseThrow(() -> new OrderBadRequestException("Product not found"));
+            // Release the reservation
+            stock.setReservedQuantity(stock.getReservedQuantity() - item.getQuantity());
+            productStockRepository.save(stock);
+        });
     }
 
     public OrderEntity getOrderByOrderId(UUID orderId) {
@@ -143,7 +186,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new OrderBadRequestException(HttpStatus.NOT_FOUND, "Order not found"));
     }
 
-    private void validateInventory(UUID productId, int quantity) {
+    private void reserveStock(UUID productId, int quantity) {
         int maxRetries = 3;
         int retryCount = 0;
 
@@ -151,27 +194,30 @@ public class OrderServiceImpl implements OrderService {
             try {
                 ProductStock stock = productStockRepository.findByProductId(productId)
                         .orElseThrow(() -> new OrderBadRequestException("Product not found: " + productId));
-                if (stock.getQuantity() < quantity) {
-                    log.error("Product {} has insufficient inventory. Available={}, requested={}", productId, stock.getQuantity(), quantity);
+                if (stock.getAvailableQuantity() < quantity) {
+                    log.error("Product {} has insufficient available inventory. Available={}, requested={}", productId, stock.getAvailableQuantity(), quantity);
                     throw new OrderBadRequestException(String.format(
-                            "Product %s has insufficient inventory. Available=%d, requested=%d",
+                            "Product %s has insufficient available inventory. Available=%d, requested=%d",
                             productId,
-                            stock.getQuantity(),
+                            stock.getAvailableQuantity(),
                             quantity));
                 }
+                // SOFT LOCK: Earmark the stock
+                stock.setReservedQuantity(stock.getReservedQuantity() + quantity);
+                productStockRepository.save(stock);
                 return;
             } catch (OptimisticLockException ex) {
                 retryCount++;
                 if (retryCount >= maxRetries) {
-                    log.error("Failed to validate stock for product {}: too many concurrent updates. Please try again.", productId);
-                    throw new OrderBadRequestException("Stock validation conflict: too many concurrent updates. Please try again.");
+                    log.error("Failed to reserve stock for product {}: too many concurrent updates. Please try again.", productId);
+                    throw new OrderBadRequestException("Stock reservation conflict: too many concurrent updates. Please try again.");
                 }
                 log.warn("Optimistic lock conflict for product {}. Retry {}/{}", productId, retryCount, maxRetries);
                 try {
                     Thread.sleep(100L * retryCount);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    throw new OrderBadRequestException("Stock validation interrupted");
+                    throw new OrderBadRequestException("Stock reservation interrupted");
                 }
             }
         }
