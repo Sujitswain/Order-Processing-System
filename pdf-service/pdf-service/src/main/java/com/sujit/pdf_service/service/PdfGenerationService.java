@@ -12,18 +12,13 @@ import com.sujit.pdf_service.dto.OrderItemResponse;
 import com.sujit.pdf_service.dto.OrderResponse;
 import com.sujit.pdf_service.event.OrderSuccessEvent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 
 @Slf4j
 @Service

@@ -23,6 +23,7 @@ public class CreatePaymentIntentRequest {
     private BigDecimal amount;
 
     @NotNull
+    @Builder.Default
     private String currency = "usd";
 
 }

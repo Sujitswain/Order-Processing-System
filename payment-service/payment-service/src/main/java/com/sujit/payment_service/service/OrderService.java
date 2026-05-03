@@ -9,15 +9,11 @@ import com.sujit.payment_service.entity.PaymentEntity;
 import com.sujit.payment_service.enums.PaymentStatus;
 import com.sujit.payment_service.exception.PaymentInternalServerException;
 import com.sujit.payment_service.repository.PaymentRepository;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
