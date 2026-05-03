@@ -1,0 +1,47 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: pdf-service
+
+  datasource:
+    url: jdbc:h2:mem:pdfsdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    consumer:
+      group-id: pdf-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.trusted.packages: '*'
+
+api:
+  order:
+    service:
+      base-url: http://localhost:8081/api/v1
+      get-orders: /orders/{orderId}
+
+aws:
+  upload-to-s3: false
+  accessKeyId: sample-access-key
+  secretAccessKey: sample-secret-key
+  region: us-east-1
+  storage:
+    bucket: my-pdf-bucket
+    base-url: https://my-pdf-bucket.s3.us-east-1.amazonaws.com
+
+logging:
+  level:
+    org.springframework: INFO
+    com.sujit: DEBUG
