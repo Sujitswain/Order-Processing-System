@@ -1,7 +1,8 @@
 package com.sujit.order_service.dto;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -21,11 +22,8 @@ public class CreateOrderRequest {
     private UUID customerId;
 
     @NotNull
+    @Email
     private String customerEmail;
-
-    @NotNull
-    @Min(1)
-    private BigDecimal totalAmount;
 
     @NotEmpty
     @Valid

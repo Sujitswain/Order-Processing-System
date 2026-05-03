@@ -3,13 +3,13 @@ package com.sujit.order_service.service.impl;
 import com.sujit.order_service.dto.CreateOrderRequest;
 import com.sujit.order_service.dto.OrderResponse;
 import com.sujit.order_service.entity.OrderEntity;
-import com.sujit.order_service.entity.OrderItemEntity;
 import com.sujit.order_service.entity.ProductStock;
 import com.sujit.order_service.enums.OrderStatus;
 import com.sujit.order_service.event.OrderCancelledEvent;
 import com.sujit.order_service.event.OrderCreatedEvent;
 import com.sujit.order_service.event.OrderSuccessEvent;
 import com.sujit.order_service.exception.OrderBadRequestException;
+import com.sujit.order_service.repository.CustomerRepository;
 import com.sujit.order_service.repository.OrderRepository;
 import com.sujit.order_service.repository.ProductStockRepository;
 import com.sujit.order_service.service.OrderProducer;
@@ -24,8 +24,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import static com.sujit.order_service.utils.ApplicationUtil.*;
@@ -36,13 +34,16 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderProducer orderProducer;
+    private final CustomerRepository customerRepository;
     private final ProductStockRepository productStockRepository;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderProducer orderProducer,
+                            CustomerRepository customerRepository,
                             ProductStockRepository productStockRepository) {
         this.orderRepository = orderRepository;
         this.orderProducer = orderProducer;
+        this.customerRepository = customerRepository;
         this.productStockRepository = productStockRepository;
     }
 
@@ -50,6 +51,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse createOrder(CreateOrderRequest request) {
         log.info("Creating order for customer: {}", request.getCustomerId());
+
+        // validate customer-id
+        if (!customerRepository.existsById(request.getCustomerId())) {
+            throw new OrderBadRequestException("Customer not found");
+        }
 
         // reserve inventory for each item in the order
         request.getItems().forEach(itemRequest -> {
@@ -221,26 +227,5 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
         }
-    }
-
-    private OrderEntity buildOrderEntity(CreateOrderRequest request) {
-        OrderEntity order = new OrderEntity();
-        order.setCustomerId(request.getCustomerId());
-        order.setCustomerEmail(request.getCustomerEmail());
-        order.setTotalAmount(request.getTotalAmount());
-        order.setStatus(OrderStatus.CREATED);
-        order.setCreatedAt(Instant.now());
-
-        List<OrderItemEntity> items = request.getItems().stream()
-                .map(itemRequest -> OrderItemEntity.builder()
-                        .productId(itemRequest.getProductId())
-                        .quantity(itemRequest.getQuantity())
-                        .price(itemRequest.getPrice())
-                        .order(order)
-                        .build())
-                .toList();
-
-        order.setItems(items);
-        return order;
     }
 }

@@ -33,6 +33,7 @@ public class OrderEntity {
     @Column(nullable = false)
     private UUID customerId;
 
+    // TODO: we can remove this field and fetch email from customer service when needed. 
     @Column(nullable = false)
     private String customerEmail;
 

@@ -1,5 +1,6 @@
 package com.sujit.order_service.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -19,9 +20,10 @@ public class OrderItemRequest {
     private UUID productId;
 
     @Min(1)
-    private int quantity;
+    private Integer quantity;
 
     @NotNull
+    @DecimalMin(value = "0.0", inclusive = false)
     private BigDecimal price;
 
 }

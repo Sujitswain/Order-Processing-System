@@ -12,4 +12,6 @@ public interface ProductService {
     ProductResponse getProduct(UUID productId);
 
     List<ProductResponse> getAllProducts();
+
+    List<ProductResponse> seedBulkProducts();
 }

@@ -37,4 +37,10 @@ public class ProductController {
         List<ProductResponse> products = productService.getAllProducts();
         return ResponseEntity.ok(products);
     }
+
+    @PostMapping("/seed")
+    public ResponseEntity<List<ProductResponse>> seedProducts() {
+        List<ProductResponse> products = productService.seedBulkProducts();
+        return ResponseEntity.ok(products);
+    }
 }
