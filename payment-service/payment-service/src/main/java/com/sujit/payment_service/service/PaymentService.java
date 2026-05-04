@@ -33,6 +33,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import static com.sujit.payment_service.util.ApplicationUtil.mapToPaymentresponse;
@@ -147,6 +148,11 @@ public class PaymentService {
         PaymentEntity payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new PaymentInternalServerException("Payment not found for order: " + orderId));
 
+        if (isDuplicateWebhook(payment, paymentIntent.getId(), PaymentStatus.SUCCESS.name())) {
+            log.info("Duplicate Stripe success webhook received for order {} and intent {}. Skipping publish.", orderId, paymentIntent.getId());
+            return;
+        }
+
         try {
             Map<String, Object> payload = new HashMap<>();
             payload.put("paymentIntentId", paymentIntent.getId());
@@ -179,6 +185,11 @@ public class PaymentService {
         PaymentEntity payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new PaymentInternalServerException("Payment not found for order: " + orderId));
 
+        if (isDuplicateWebhook(payment, paymentIntent.getId(), PaymentStatus.FAILURE.name())) {
+            log.info("Duplicate Stripe failed webhook received for order {} and intent {}. Skipping publish.", orderId, paymentIntent.getId());
+            return;
+        }
+
         try {
             Map<String, Object> payload = new HashMap<>();
             payload.put("paymentIntentId", paymentIntent.getId());
@@ -189,6 +200,7 @@ public class PaymentService {
 
             payment.setStatus(PaymentStatus.FAILURE.name());
             payment.setResponsePayload(objectMapper.writeValueAsString(payload));
+            payment.setTransactionId(paymentIntent.getId());
 
             paymentRepository.save(payment);
             publishFailure(orderId, "Payment failed");
@@ -197,6 +209,11 @@ public class PaymentService {
         } catch (Exception e) {
             throw new PaymentInternalServerException(e.getMessage());
         }
+    }
+
+    private boolean isDuplicateWebhook(PaymentEntity payment, String paymentIntentId, String expectedStatus) {
+        return Objects.equals(paymentIntentId, payment.getTransactionId())
+                && expectedStatus.equals(payment.getStatus());
     }
 
     private void publishSuccess(PaymentEntity payment) {
