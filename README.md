@@ -1,6 +1,8 @@
 # Order Processing System
 Event-driven Microservices architecture built with Kafka and Spring Boot. This project demonstrates a distributed Order Processing System using asynchronous messaging to decouple Order, Payment, Inventory, and Notification services. Services share a MySQL database with soft locking to prevent race conditions.
 
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/1dc1d5a6-edc2-4220-aba6-1d589116c8c8" />
+
 ## Services
 
 **Order Service**
