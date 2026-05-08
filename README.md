@@ -3,6 +3,8 @@ Event-driven Microservices architecture built with Kafka and Spring Boot. This p
 
 <img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/1dc1d5a6-edc2-4220-aba6-1d589116c8c8" />
 
+Flow evidence: this weekend 
+
 ## Services
 
 **Order Service**
